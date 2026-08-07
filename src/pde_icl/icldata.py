@@ -1,0 +1,58 @@
+"""Bridge `pde_priors.icl` tables into the tabpfn `fit`/`predict` format.
+
+Each `TabICLSample` is one boundary-value problem -> one table.  `collate_tabicl`
+packs a batch into `X [B, T, H]` / `y [B, T]` with `train_size[B]` context rows.
+This module splits each table into a (support, query) pair as flat `(n_rows,
+n_features)` arrays that `TabPFNRegressor.fit/predict` consume.
+
+Note on standardization: `pde_priors.icl.adapt` z-standardizes features and the
+target from the support set, so the target `y` here is in standardized units. For
+physics-meaningful RMSE you can re-express predictions using the support
+mean/std of the raw target (returned by this module's raw normalizer when
+available).
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+import numpy as np
+from pde_priors.icl import TabICLBatch
+
+
+@dataclass(frozen=True, slots=True)
+class TableSplit:
+    """One table split into tabpfn-style support/core tensors."""
+
+    X_support: np.ndarray  # [k, H]
+    y_support: np.ndarray  # [k]
+    X_query: np.ndarray  # [T-k, H]
+    y_query: np.ndarray  # [T-k]
+
+
+def split_table(X: np.ndarray, y: np.ndarray, train_size: int) -> TableSplit:
+    """Split one standardized table into support and query arrays."""
+    support = slice(0, train_size)
+    query = slice(train_size, None)
+    return TableSplit(
+        X_support=X[support],
+        y_support=y[support],
+        X_query=X[query],
+        y_query=y[query],
+    )
+
+
+def tables_from_batch(batch: TabICLBatch) -> list[TableSplit]:
+    """Materialize every table in a collated batch into tabpfn-form splits."""
+    sizes = [batch.X.shape[0], batch.y.shape[0], batch.train_size.shape[0]]
+    if len(set(sizes)) != 1:
+        raise ValueError("X, y, train_size must agree on the batch dimension")
+    if batch.X.shape[0] == 0:
+        raise ValueError("batch contains no tables")
+    tables: list[TableSplit] = []
+    for index in range(batch.X.shape[0]):
+        X = np.asarray(batch.X[index].detach().cpu().numpy(), dtype=np.float32)
+        y = np.asarray(batch.y[index].detach().cpu().numpy(), dtype=np.float32)
+        train_size = int(batch.train_size[index].item())
+        tables.append(split_table(X, y, train_size))
+    return tables
