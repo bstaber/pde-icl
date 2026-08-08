@@ -51,8 +51,12 @@ def tables_from_batch(batch: TabICLBatch) -> list[TableSplit]:
         raise ValueError("batch contains no tables")
     tables: list[TableSplit] = []
     for index in range(batch.X.shape[0]):
-        X = np.asarray(batch.X[index].detach().cpu().numpy(), dtype=np.float32)
-        y = np.asarray(batch.y[index].detach().cpu().numpy(), dtype=np.float32)
+        # trim padding: `collate_tabicl` pads every table to the batch's longest
+        # seq_len, so only the first `seq_len[index]` rows are real.  Without the
+        # trim, padded zero rows would leak into the support/query split.
+        seq_len = int(batch.seq_len[index].item())
+        X = np.asarray(batch.X[index, :seq_len].detach().cpu().numpy(), dtype=np.float32)
+        y = np.asarray(batch.y[index, :seq_len].detach().cpu().numpy(), dtype=np.float32)
         train_size = int(batch.train_size[index].item())
         tables.append(split_table(X, y, train_size))
     return tables

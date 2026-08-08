@@ -49,3 +49,30 @@ def test_tables_from_batch_rejects_empty() -> None:
             train_size=torch.tensor([], dtype=torch.int64),
         )
         tables_from_batch(batch)
+
+
+def test_tables_from_batch_trims_padded_rows_by_seq_len() -> None:
+    h = 9
+    max_t = 20
+    # table 0 has 10 real rows, table 1 has 20; both padded in a [2, max_t, h] batch
+    X = torch.zeros(2, max_t, h, dtype=torch.float32)
+    y = torch.zeros(2, max_t, dtype=torch.float32)
+    X[0, :10] = torch.arange(10 * h, dtype=torch.float32).reshape(10, h)
+    y[0, :10] = torch.arange(10, dtype=torch.float32)
+    X[1, :20] = torch.arange(20 * h, dtype=torch.float32).reshape(20, h)
+    y[1, :20] = torch.arange(20, dtype=torch.float32)
+    batch = TabICLBatch(
+        X=X,
+        y=y,
+        d=torch.tensor(h, dtype=torch.int64),
+        seq_len=torch.tensor([10, 20], dtype=torch.int64),
+        train_size=torch.tensor([4, 8], dtype=torch.int64),
+    )
+    tables = tables_from_batch(batch)
+    # table 0 trimmed to 10 rows -> support 4, query 6 (NO padded zero rows leaked)
+    assert tables[0].X_support.shape == (4, h)
+    assert tables[0].X_query.shape == (6, h)
+    assert tables[0].y_query.shape == (6,)
+    # table 1 full length -> support 8, query 12
+    assert tables[1].X_support.shape == (8, h)
+    assert tables[1].X_query.shape == (12, h)
