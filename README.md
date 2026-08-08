@@ -47,7 +47,8 @@ from tabicl import TabICLRegressor
 pri = GeometryPrior(); gen = GeometryAwareGenerator(prior=pri)
 req = GenerationRequest(equation=EquationName.POISSON, spatial_dim=2, batch_size=1,
     interior_points=24,
-    boundary=BoundaryRequest(kind=BoundaryKind.DIRICHLET, points_per_face=6))
+    boundary=BoundaryRequest(kind=BoundaryKind.DIRICHLET, boundary_points=6),
+)
 key = BatchKey(3, 0, 0)
 sp = tables_from_batch(collate_tabicl([adapt(gen.generate(req, key), pri.sample(key))]))[0]
 m = TabICLRegressor(); m.fit(sp.X_support, sp.y_support)

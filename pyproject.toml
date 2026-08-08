@@ -22,7 +22,7 @@ packages = ["src/pde_icl"]
 dev = ["pytest", "ruff", "mypy"]
 
 [tool.uv.sources]
-pde-priors = { path = "../pde-priors" }
+pde-priors = { path = "../pde-priors", editable = true }
 
 [tool.pytest.ini_options]
 addopts = ["--strict-config", "--strict-markers", "-m=not cuda and not slow and not benchmark"]
