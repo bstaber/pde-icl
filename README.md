@@ -173,6 +173,17 @@ both is in place.
 
 ## TODO
 
+**Scientific**
 - Validate a truly held-out cross-geometry split: pre-train on a *restricted*
   prior (e.g. `{circle, fourier_star}`) and evaluate the trained model on the
-  held-out family (`ellipse`). The tooling now supports this directly.
+  held-out family (`ellipse`) — the tooling supports this directly.
+- Numerical `SolverPrior` (V2) baseline: establish whether the in-context PDE
+  solver genuinely *generalizes* across geometry, not just memorizes the prior.
+
+**Training / scale**
+- Scale up the online training recipe (steps, model size, interior/boundary
+  points) now that online is the canonical path and clearly better than disk.
+
+**Packaging / reproducibility**
+- Publish the best trained checkpoint (`online_ckpt_real/step-8000.ckpt`) as a
+  GitHub release (it's gitignored, not in the repo), with a reproduction note.
