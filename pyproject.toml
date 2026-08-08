@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "pde-priors",
-    "tabicl[pretrain,finetune]>=2.1",
+    "tabicl[pretrain,finetune]",
     "torch>=2.2",
     "numpy",
 ]
@@ -23,6 +23,10 @@ dev = ["pytest", "ruff", "mypy"]
 
 [tool.uv.sources]
 pde-priors = { path = "../pde-priors", editable = true }
+# TabICL: pinned to the GitHub HEAD (Jul 2026), the only source whose
+# `tabicl.train` supports `--regression_method quantile` (PyPI 2.1.1 is
+# classification-only and cannot train our regression objective).
+tabicl = { git = "https://github.com/soda-inria/tabicl", rev = "46b91961db4f8873dd049ec09990698a435e1e29" }
 
 [tool.pytest.ini_options]
 addopts = ["--strict-config", "--strict-markers", "-m=not cuda and not slow and not benchmark"]
