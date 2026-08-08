@@ -133,6 +133,44 @@ and evaluates it per geometry family:
 - `trained_cross_geometry(ckpt, train_args, request, n_tables=...)` — per-family
   `circle`/`ellipse`/`fourier_star`/`all` zero-shot RMSE (std + de-normalized raw).
 
+## Results
+
+**Experiment.** We train a TabICL v2 (fully open `soda-inria/tabicl`, quantile
+regression) as an in-context PDE solver on the `pde_priors` geometry-conditioned
+Poisson prior. One table = one BVP; the context is all Dirichlet boundary rows
+plus a subset of observed interior rows, and the task is to predict the withheld
+interior solution. We compare three models by **zero-shot** RMSE (fit context,
+predict query, no per-table gradient updates) on fresh tables per geometry
+family. RMSE is de-normalized to raw target units (`rmse_raw = rmse_std · y_std`).
+
+**Training setup.** `python -m pde_icl.train_online` (see above) pre-trains on a
+*fresh BVP every step* — no fixed dataset on disk. One run: 8,000 steps,
+`batch_size 16` / `micro_batch_size 4`, embed 96 / 6 ICL blocks / 2 row / 2 col
+blocks, `seq_len 144` (128 interior + 16 boundary points, 9 features), 64
+quantiles, AMP fp16, ~11 it/s on an RTX 4080 SUPER (~12 min). The disk-trained
+comparison used the same arch but the pre-generated archive instead.
+
+**Result (raw RMSE, lower is better; n=24 tables/family, fresh seed):**
+
+| geometry family | stock TabICL | disk-trained | **online-trained** |
+|---|---|---|---|
+| circle | 0.098 | 0.045 | **0.0039** |
+| ellipse | 0.078 | 0.066 | **0.0058** |
+| fourier_star | 0.171 | 0.040 | **0.0021** |
+| all | 0.197 | 0.052 | **0.0037** |
+
+Pre-training on the geometry prior markedly beats stock TabICL, and **online
+training dominates the disk path (~10–30×)**: streaming a fresh, unbounded
+geometry distribution each step yields a model that reproduces the withheld
+interior solution nearly exactly from the boundary + observed interior
+observations.
+
+**Caveats.** These are *in-family* results — training and eval drew from the same
+geometry-prior distribution (all three families). True held-out cross-geometry
+generalization (train on a restricted prior, eval on an unseen family) and the
+numerical `SolverPrior` baseline are the next scientific steps; the tooling for
+both is in place.
+
 ## TODO
 
 - Validate a truly held-out cross-geometry split: pre-train on a *restricted*
