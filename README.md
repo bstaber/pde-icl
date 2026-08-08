@@ -98,7 +98,19 @@ De-normalization: `TabICLSample` now carries the support-target stats
 (`y_mean`, `y_std`), so a standardized prediction is converted back to raw
 physics units via `pred * y_std + y_mean` (and `rmse_raw = rmse_std * y_std`).
 
+## Evaluating a pre-trained checkpoint
+
+`pde_icl.eval_checkpoint` rebuilds a `tabicl.train` checkpoint of our *custom*
+architecture (the stock `TabICLRegressor` only loads the fixed HF checkpoint)
+and evaluates it per geometry family:
+
+- `load_trained_model(ckpt, train_args, device)` / `evaluate_batch(...)` — in-context
+  forward `model(X, y_train, d)` giving median-quantile predictions.
+- `trained_cross_geometry(ckpt, train_args, request, n_tables=...)` — per-family
+  `circle`/`ellipse`/`fourier_star`/`all` zero-shot RMSE (std + de-normalized raw).
+
 ## TODO
 
-- Run an actual `tabicl.train` pre-training run on the exported prior (needs a
-  GPU and real compute budget) and validate in-family + cross-geometry.
+- Validate a truly held-out cross-geometry split: pre-train on a *restricted*
+  prior (e.g. `{circle, fourier_star}`) and evaluate the trained model on the
+  held-out family (`ellipse`). The tooling now supports this directly.

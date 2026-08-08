@@ -1,17 +1,16 @@
-# Python
+# --- Large local build/runtime artifacts (not version-controlled) ---
+# TabICL pre-training data batches and checkpoints are generated per machine;
+# they are large and reproducible, so they must NOT be committed.
+prior_run/
+prior_smoke/
+sm_ckpt/
+mid_probe/
+real_ckpt/
+*.ckpt
+*.pt.tmp
+
+# --- Python ---
 __pycache__/
 *.py[cod]
 .venv/
 *.egg-info/
-dist/
-build/
-
-# Caches / tooling
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.coverage
-htmlcov/
-
-# Local
-*.log
