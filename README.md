@@ -187,3 +187,17 @@ both is in place.
 **Packaging / reproducibility**
 - Publish the best trained checkpoint (`online_ckpt_real/step-8000.ckpt`) as a
   GitHub release (it's gitignored, not in the repo), with a reproduction note.
+
+**Roadmap / extensions (owner-discussed, see the `pde-priors-v2` skill)**
+- *Tier 1 (same architecture):* push "other PDEs" through ICL (advection-diffusion,
+  Helmholtz), richer 2D geometry (CSG/holes/non-star, mixed BCs).
+- *Tier 2:* **multi-output targets** (`y [B,T]` → `y [B,T,C]`) across
+  `TabICSample`/`TabICLBatch`/eval — the keystone for engineering PDEs; then 3D
+  surface sampling + a third coordinate feature.
+- *Tier 3 (engineering PDEs):* solid mechanics (linear elasticity) as the
+  tractable first case (manufactured polynomial displacements; needs Tier-2
+  output plumbing); **RANS / Navier–Stokes** later via a numerical `SolverPrior`
+  (FEM/FVM truth generation in the loop) — the same keystone that grounds the
+  causal cross-geometry test.
+- *Sequencing:* SolverPrior → multi-output schema → CSG/holes/mixed BCs →
+  solid mechanics → 3D → RANS.
