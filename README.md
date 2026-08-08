@@ -56,10 +56,40 @@ print("RMSE:", float(np.sqrt(np.mean((np.asarray(m.predict(sp.X_query)) - sp.y_q
 PY
 ```
 
+## Pre-training TabICL on the geometry prior
+
+`pde_icl.pretrain_data` exports the geometry prior as TabICL's on-disk
+pre-training batches (the exact sparse `{X, y, d, seq_lens, train_sizes,
+batch_size}` format `python -m tabicl.train` reads via
+`tabicl.prior._genload.LoadPriorDataset`). One BVP = one table; every table in a
+batch shares one fixed request, so row counts are uniform within a batch as the
+loader expects.
+
+```bash
+# 1. Generate prior batches on disk
+uv run python -m pde_icl.pretrain_data \
+    --save-dir prior_data \
+    --n-batches 1000 --batch-size 32 \
+    --interior-points 64 --boundary-points 16 \
+    --support-fraction 0.5
+
+# 2. Pre-train TabICL on the geometry prior (needs a GPU; long run)
+uv run python -m tabicl.train \
+    --prior_dir prior_data \
+    --regression_method quantile --num_quantiles 999 \
+    --max_steps 60000 --device cuda \
+    --wandb_mode disabled
+```
+
+Round-trip compatibility with `LoadPriorDataset` is covered by
+`tests/test_pretrain_data.py` (export → load → reconstructed dense `X [B,T,H]`,
+`y`, `d`, `seq_lens`).
+
 ## TODO
 
-- `tabicl.prior` adapter: convert `pde_priors.icl` tables to TabICL's
-  deep-prior training batches and wire the pretraining trainer (`tabicl.train`).
 - Cross-geometry eval harness (train on circle/star prior, eval on ellipse /
-  unseen stars).
-- Raw-target normalization for physics-meaningful RMSE reporting.
+  unseen stars) — the key scientific test.
+- Raw-target normalization for physics-meaningful RMSE reporting (re-express
+  standardized predictions using the support mean/std).
+- Run an actual `tabicl.train` pre-training run on the exported prior (needs a
+  GPU and real compute budget) and validate in-family + cross-geometry.
