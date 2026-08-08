@@ -22,15 +22,29 @@ from pde_priors.icl import TabICLBatch
 
 @dataclass(frozen=True, slots=True)
 class TableSplit:
-    """One table split into tabpfn-style support/core tensors."""
+    """One table split into tabpfn-style support/core tensors.
+
+    ``y_mean``/``y_std`` are the table's support-set target statistics that were
+    used to standardize ``y``; predictions in standardized units are converted
+    back to raw physics units via ``y_pred * y_std + y_mean``.
+    """
 
     X_support: np.ndarray  # [k, H]
     y_support: np.ndarray  # [k]
     X_query: np.ndarray  # [T-k, H]
     y_query: np.ndarray  # [T-k]
+    y_mean: float = 0.0  # raw target mean (standardization offset)
+    y_std: float = 1.0  # raw target std (standardization scale)
 
 
-def split_table(X: np.ndarray, y: np.ndarray, train_size: int) -> TableSplit:
+def split_table(
+    X: np.ndarray,
+    y: np.ndarray,
+    train_size: int,
+    *,
+    y_mean: float = 0.0,
+    y_std: float = 1.0,
+) -> TableSplit:
     """Split one standardized table into support and query arrays."""
     support = slice(0, train_size)
     query = slice(train_size, None)
@@ -39,6 +53,8 @@ def split_table(X: np.ndarray, y: np.ndarray, train_size: int) -> TableSplit:
         y_support=y[support],
         X_query=X[query],
         y_query=y[query],
+        y_mean=y_mean,
+        y_std=y_std,
     )
 
 
@@ -58,5 +74,7 @@ def tables_from_batch(batch: TabICLBatch) -> list[TableSplit]:
         X = np.asarray(batch.X[index, :seq_len].detach().cpu().numpy(), dtype=np.float32)
         y = np.asarray(batch.y[index, :seq_len].detach().cpu().numpy(), dtype=np.float32)
         train_size = int(batch.train_size[index].item())
-        tables.append(split_table(X, y, train_size))
+        y_mean = float(batch.y_mean[index].item())
+        y_std = float(batch.y_std[index].item())
+        tables.append(split_table(X, y, train_size, y_mean=y_mean, y_std=y_std))
     return tables

@@ -85,11 +85,20 @@ Round-trip compatibility with `LoadPriorDataset` is covered by
 `tests/test_pretrain_data.py` (export → load → reconstructed dense `X [B,T,H]`,
 `y`, `d`, `seq_lens`).
 
+## Cross-geometry eval
+
+`pde_icl.eval_zero_shot.cross_geometry_summary(request, n_tables=...)` evaluates
+zero-shot TabICL RMSE per geometry family (`circle`, `ellipse`, `fourier_star`)
+and on the full prior. Results are reported per family in both standardized
+(`rmse_std`) and de-normalized raw (`rmse_raw`) units (using each table's
+support-target std). This is the harness for probing a pre-trained model on
+held-out geometry families.
+
+De-normalization: `TabICLSample` now carries the support-target stats
+(`y_mean`, `y_std`), so a standardized prediction is converted back to raw
+physics units via `pred * y_std + y_mean` (and `rmse_raw = rmse_std * y_std`).
+
 ## TODO
 
-- Cross-geometry eval harness (train on circle/star prior, eval on ellipse /
-  unseen stars) — the key scientific test.
-- Raw-target normalization for physics-meaningful RMSE reporting (re-express
-  standardized predictions using the support mean/std).
 - Run an actual `tabicl.train` pre-training run on the exported prior (needs a
   GPU and real compute budget) and validate in-family + cross-geometry.

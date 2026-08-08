@@ -17,6 +17,8 @@ def _batch(n_tables: int = 2, t: int = 8, h: int = 9, k: int = 5) -> TabICLBatch
         d=torch.tensor(h, dtype=torch.int64),
         seq_len=torch.tensor([t] * n_tables, dtype=torch.int64),
         train_size=torch.tensor([k, k], dtype=torch.int64),
+        y_mean=torch.zeros(n_tables, dtype=torch.float32),
+        y_std=torch.ones(n_tables, dtype=torch.float32),
     )
 
 
@@ -47,6 +49,8 @@ def test_tables_from_batch_rejects_empty() -> None:
             d=torch.tensor(3, dtype=torch.int64),
             seq_len=torch.tensor([], dtype=torch.int64),
             train_size=torch.tensor([], dtype=torch.int64),
+            y_mean=torch.tensor([], dtype=torch.float32),
+            y_std=torch.tensor([], dtype=torch.float32),
         )
         tables_from_batch(batch)
 
@@ -67,6 +71,8 @@ def test_tables_from_batch_trims_padded_rows_by_seq_len() -> None:
         d=torch.tensor(h, dtype=torch.int64),
         seq_len=torch.tensor([10, 20], dtype=torch.int64),
         train_size=torch.tensor([4, 8], dtype=torch.int64),
+        y_mean=torch.zeros(2, dtype=torch.float32),
+        y_std=torch.tensor([1.0, 2.0], dtype=torch.float32),
     )
     tables = tables_from_batch(batch)
     # table 0 trimmed to 10 rows -> support 4, query 6 (NO padded zero rows leaked)
@@ -76,3 +82,14 @@ def test_tables_from_batch_trims_padded_rows_by_seq_len() -> None:
     # table 1 full length -> support 8, query 12
     assert tables[1].X_support.shape == (8, h)
     assert tables[1].X_query.shape == (12, h)
+    # per-table target stats are carried for de-normalization
+    assert tables[0].y_std == 1.0
+    assert tables[1].y_std == 2.0
+
+
+def test_split_table_carries_target_stats() -> None:
+    X = np.arange(10 * 3, dtype=np.float32).reshape(10, 3)
+    y = np.arange(10, dtype=np.float32)
+    split = split_table(X, y, train_size=4, y_mean=0.25, y_std=1.5)
+    assert split.y_mean == 0.25
+    assert split.y_std == 1.5
