@@ -56,7 +56,31 @@ print("RMSE:", float(np.sqrt(np.mean((np.asarray(m.predict(sp.X_query)) - sp.y_q
 PY
 ```
 
-## Pre-training TabICL on the geometry prior
+## Online training (no disk round-trip)
+
+`python -m pde_icl.train_online` trains TabICL directly on the live
+`pde_priors` generator — no pre-generated batches on disk. It subclasses TabICL's
+`Trainer` (`PdeTrainer`, `pde_icl.train_online`) and overrides `configure_prior`
+to feed a `PdePriorIterable` (one fresh BVP per table, generated every step;
+`pde_icl.online_prior`), reusing all the rest of the trainer unchanged.
+
+```bash
+uv run python -m pde_icl.train_online \
+    --regression_method quantile --num_quantiles 999 \
+    --max_steps 60000 --batch_size 16 --micro_batch_size 4 \
+    --embed_dim 96 --icl_num_blocks 6 --row_num_blocks 2 --col_num_blocks 2 --col_num_inds 64 --ff_factor 3 \
+    --min_seq_len 144 --max_seq_len 160 --min_features 9 --max_features 9 \
+    --device cuda --amp True --wandb_mode disabled \
+    --pde-request-interior 128 --pde-request-boundary 16 --n_jobs 4
+```
+
+- `--pde-request-interior`/`--pde-request-boundary` size the single-BVP request
+  (uniform tables within a batch), `--pde-prior-root-seed` seeds the stream,
+  `--n_jobs>0` prefetches generation in worker processes.
+- Benefits over the disk path: no storage, no file-count step cap, and a fresh
+  (unbounded) distribution of geometries/tables every step.
+
+## Pre-training TabICL on the geometry prior (from disk)
 
 `pde_icl.pretrain_data` exports the geometry prior as TabICL's on-disk
 pre-training batches (the exact sparse `{X, y, d, seq_lens, train_sizes,
